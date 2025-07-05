@@ -5,6 +5,19 @@ All notable changes to the Autodesk Complete Removal Tool will be documented in 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.0] - 2025-07-06
+
+### Changed
+- Future-proofed Autodesk Material Library service stopping: dynamically finds all services with names starting with "Autodesk Material Library" (no more hardcoded years).
+- Expanded process termination: added support for more Autodesk products (Civil 3D, Navisworks, Alias, Vault, Advance Steel, InfraWorks, Recap, Plant 3D, Robot, Moldflow, PowerMill, PowerInspect, PowerShape, Flame, Smoke, MotionBuilder, Mudbox, Character Generator, SketchBook, Eagle, BIM 360, FormIt, Structural Bridge, Structural Detailing, and more).
+- Moved official uninstaller execution (`Invoke-OfficialUninstallers`) to run before directory removal, ensuring uninstallers are not deleted before execution.
+
+### Fixed
+- No script errors detected after recent changes.
+
+### Notes
+- These changes improve reliability and future compatibility for new Autodesk product versions and variants.
+
 ## [2.0.0] - 2025-07-05
 
 ### Background
@@ -116,6 +129,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 | Version | Release Date | Major Changes |
 |---------|--------------|---------------|
+| 2.1.0   | 2025-07-06   | Improved service stopping, process termination, and uninstaller execution order |
 | 2.0.0   | 2025-07-05   | Complete PowerShell rewrite with enhanced safety and features |
 | 1.0.0   | 2025-07-04   | Initial batch script version |
 

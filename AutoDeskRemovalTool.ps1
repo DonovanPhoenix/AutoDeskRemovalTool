@@ -167,21 +167,18 @@ function Show-SafetyWarnings {
 function Stop-AutodeskServices {
     Write-ColoredOutput "Stopping Autodesk services..." -Color $Colors.Info
     
+    # Dynamically find all Autodesk Material Library services (future-proof for new years)
+    $materialLibraryServices = Get-Service | Where-Object { $_.DisplayName -like "Autodesk Material Library*" } | Select-Object -ExpandProperty Name
+
     $services = @(
         "FlexNet Licensing Service 64",
         "AdskLicensingService",
-        "Autodesk Material Library 2023",
-        "Autodesk Material Library 2024",
-        "Autodesk Material Library 2025",
-        "Autodesk Material Library Base Resolution Image Library 2023",
-        "Autodesk Material Library Base Resolution Image Library 2024",
-        "Autodesk Material Library Base Resolution Image Library 2025",
         "Autodesk Desktop App Service",
         "Autodesk Single Sign On Service",
         "Autodesk Genuine Service"
-    )
+    ) + $materialLibraryServices
     
-    foreach ($serviceName in $services) {
+    foreach ($serviceName in $services | Sort-Object -Unique) {
         try {
             $service = Get-Service -Name $serviceName -ErrorAction SilentlyContinue
             if ($service) {
@@ -215,10 +212,15 @@ function Stop-AutodeskProcesses {
         "inventor", "3dsmax", "maya", "revit", "fusion360", "AdskAccessCore",
         "AdskAccessCoreService", "CAMDuctPostProcess", "ConnectivityUtility",
         "FusionWebHelperService", "AdGenuineService", "msiexec", "setup",
-        "install", "uninstall", "uninst", "InstallShield", "InstallAgent"
+        "install", "uninstall", "uninst", "InstallShield", "InstallAgent",
+        # Additional Autodesk products
+        "civil3d", "navisworks", "alias", "vault", "advancesteel", "infraworks",
+        "recap", "plant3d", "robot", "moldflow", "powermill", "powerinspect",
+        "powershape", "flame", "smoke", "motionbuilder", "mudbox", "characterGenerator",
+        "sketchbook", "eagle", "bim360", "formit", "structuralbridge", "structuraldetailing"
     )
     
-    foreach ($processName in $processes) {
+    foreach ($processName in $processes | Sort-Object -Unique) {
         try {
             $runningProcesses = Get-Process -Name $processName -ErrorAction SilentlyContinue
             if ($runningProcesses) {
@@ -230,18 +232,44 @@ function Stop-AutodeskProcesses {
         }
     }
     
-    # Stop processes in Autodesk directories
+    # Stop processes in Autodesk directories (expanded for more products)
     try {
         $allProcesses = Get-WmiObject -Class Win32_Process | Where-Object { 
             $_.ExecutablePath -and 
-            ($_.ExecutablePath -like "*autodesk*" -or 
-             $_.ExecutablePath -like "*autocad*" -or 
-             $_.ExecutablePath -like "*inventor*" -or 
-             $_.ExecutablePath -like "*maya*" -or 
-             $_.ExecutablePath -like "*3dsmax*" -or 
-             $_.ExecutablePath -like "*revit*" -or 
-             $_.ExecutablePath -like "*fusion*" -or 
-             $_.ExecutablePath -like "*adsk*")
+            (
+                $_.ExecutablePath -like "*autodesk*" -or 
+                $_.ExecutablePath -like "*autocad*" -or 
+                $_.ExecutablePath -like "*inventor*" -or 
+                $_.ExecutablePath -like "*maya*" -or 
+                $_.ExecutablePath -like "*3dsmax*" -or 
+                $_.ExecutablePath -like "*revit*" -or 
+                $_.ExecutablePath -like "*fusion*" -or 
+                $_.ExecutablePath -like "*adsk*" -or
+                $_.ExecutablePath -like "*civil3d*" -or
+                $_.ExecutablePath -like "*navisworks*" -or
+                $_.ExecutablePath -like "*alias*" -or
+                $_.ExecutablePath -like "*vault*" -or
+                $_.ExecutablePath -like "*advancesteel*" -or
+                $_.ExecutablePath -like "*infraworks*" -or
+                $_.ExecutablePath -like "*recap*" -or
+                $_.ExecutablePath -like "*plant3d*" -or
+                $_.ExecutablePath -like "*robot*" -or
+                $_.ExecutablePath -like "*moldflow*" -or
+                $_.ExecutablePath -like "*powermill*" -or
+                $_.ExecutablePath -like "*powerinspect*" -or
+                $_.ExecutablePath -like "*powershape*" -or
+                $_.ExecutablePath -like "*flame*" -or
+                $_.ExecutablePath -like "*smoke*" -or
+                $_.ExecutablePath -like "*motionbuilder*" -or
+                $_.ExecutablePath -like "*mudbox*" -or
+                $_.ExecutablePath -like "*characterGenerator*" -or
+                $_.ExecutablePath -like "*sketchbook*" -or
+                $_.ExecutablePath -like "*eagle*" -or
+                $_.ExecutablePath -like "*bim360*" -or
+                $_.ExecutablePath -like "*formit*" -or
+                $_.ExecutablePath -like "*structuralbridge*" -or
+                $_.ExecutablePath -like "*structuraldetailing*"
+            )
         }
         
         foreach ($process in $allProcesses) {
