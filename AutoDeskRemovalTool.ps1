@@ -7,8 +7,8 @@
     directories, registry entries, shortcuts, and firewall rules from Windows systems.
 .NOTES
     Author: System Administrator
-    Version: 2.0
-    Date: July 5, 2025
+    Version: 2.1  # Updated version
+    Date: July 6, 2025  # Updated date
     Requires: PowerShell 5.1+ and Administrator privileges
 #>
 
@@ -16,7 +16,11 @@
 param(
     [switch]$Force,
     [switch]$NoRestart,
-    [switch]$SkipRestorePoint
+    [switch]$SkipRestorePoint,
+    [string]$LogPath = "$env:TEMP\\AutoDeskRemovalTool.log",
+    [string]$NetworkLogPath,
+    [switch]$SilentUninstall,
+    [switch]$RemoveMicrosoftDependencies  # New switch to control removal of Microsoft Redistributables
 )
 
 # Set strict mode for better error handling
@@ -316,6 +320,94 @@ function Invoke-OfficialUninstallers {
             Write-ColoredOutput "Could not run AdskLicensing uninstaller" -Color $Colors.Warning
         }
     }
+}
+
+function Uninstall-MSIProductByGUID {
+    param(
+        [string]$DisplayName,
+        [string]$GUID
+    )
+    $arguments = "/x $GUID"
+    if ($SilentUninstall) {
+        $arguments += " /quiet /norestart"
+    } else {
+        $arguments += " /passive"
+    }
+    $arguments += " /L*V `"$env:TEMP\\AutoDeskRemovalTool_MSI_$GUID.log`""
+    Write-ColoredOutput "Attempting to uninstall: $DisplayName ($GUID)" -Color $Colors.Info
+    Write-Log "Uninstalling: $DisplayName ($GUID)"
+    $process = Start-Process -FilePath msiexec.exe -ArgumentList $arguments -Wait -PassThru -ErrorAction SilentlyContinue
+    switch ($process.ExitCode) {
+        0 {
+            Write-ColoredOutput "Successfully uninstalled: $DisplayName ($GUID)" -Color $Colors.Success
+            Write-Log "Successfully uninstalled: $DisplayName ($GUID)"
+        }
+        1605 {
+            Write-ColoredOutput "Not installed: $DisplayName ($GUID)" -Color $Colors.Warning
+            Write-Log "Not installed: $DisplayName ($GUID)"
+        }
+        default {
+            Write-ColoredOutput "Failed to uninstall: $DisplayName ($GUID) (ExitCode: $($process.ExitCode))" -Color $Colors.Error
+            Write-Log "Failed to uninstall: $DisplayName ($GUID) (ExitCode: $($process.ExitCode))"
+        }
+    }
+}
+
+function Uninstall-AutodeskMSIProducts {
+    Write-ColoredOutput "Uninstalling Autodesk and related MSI products by GUID..." -Color $Colors.Info
+    Write-Log "Starting MSI GUID-based Autodesk and dependency uninstallation."
+    $products = @(
+        @{ Name = 'Autodesk Material Library 2017'; GUID = '{8FB9F735-D64C-4991-8D91-4CDDAB1ABDEE}' },
+        @{ Name = 'Autodesk Material Library Base Resolution Image Library 2017'; GUID = '{3FBFBC43-9882-43FA-B979-2D53896747B3}' },
+        @{ Name = 'Autodesk License Service (x64) - 3.1'; GUID = '{EB6FE58F-8576-4272-BB9C-6B47D9EDFA4D}' },
+        @{ Name = 'Autodesk Material Library Low Resolution Image Library 2017'; GUID = '{360AC116-6CD4-4E7D-8174-28D47B05E898}' },
+        @{ Name = 'Autodesk Design Review 2013'; GUID = '{153DB567-6FF3-49AD-AC4F-86F8A3CCFDFB}' },
+        @{ Name = 'Autodesk Inventor 2017'; GUID = '{7F4DD591-2164-0001-0000-7107D70F3DB4}' },
+        @{ Name = 'Autodesk Inventor 2017 English Language Pack'; GUID = '{7F4DD591-2164-0001-1033-7107D70F3DB4}' },
+        @{ Name = 'Autodesk Desktop Connect Service'; GUID = '{FC772454-BB19-0000-0330-44B459520227}' },
+        @{ Name = 'Autodesk Guided Tutorial Plugin'; GUID = '{B3AFC608-D811-0003-0330-21FB25B48D6E}' },
+        @{ Name = 'Inventor Connected Desktop for A360'; GUID = '{1FA52755-1FBC-0001-0330-7CEA1F3736D8}' },
+        @{ Name = 'Autodesk Configurator 360 addin'; GUID = '{E3EE083F-6856-44AB-BC82-445E2FFB8C1A}' },
+        @{ Name = 'DWG TrueView 2017 - English'; GUID = '{28B89EEF-0028-0409-0100-CF3F3A09B77D}' },
+        @{ Name = 'Autodesk Inventor Electrical Catalog Browser 2017 - English'; GUID = '{28B89EEF-0007-0000-7102-CF3F3A09B77D}' },
+        @{ Name = 'Autodesk Inventor Electrical Catalog Browser 2017 Language Pack - English'; GUID = '{28B89EEF-0007-0409-8102-CF3F3A09B77D}' },
+        @{ Name = 'Autodesk Revit Interoperability for Inventor 2017'; GUID = '{0BB716E0-1700-0210-0000-097DC2F354DF}' },
+        @{ Name = 'A360 Desktop'; GUID = '{7758802D-9486-4883-9927-CCAC366A3BA4}' },
+        @{ Name = 'Eco Materials Adviser for Autodesk Inventor 2017 (64-bit)'; GUID = '{05D87862-35C9-4CB4-92EC-8A1FC97BFF6C}' },
+        @{ Name = 'Autodesk Inventor Content Center Libraries 2017 (Desktop Content)'; GUID = '{B46DECD1-2164-4EF1-0000-22D71E81877C}' },
+        @{ Name = 'Autodesk ReCap 360'; GUID = '{5F0F7049-0000-1033-0102-73A6DA3D7FA6}' },
+        @{ Name = 'Autodesk Vault Basic 2017 (Client)'; GUID = '{CF526A26-2264-0000-0000-02E95019B628}' },
+        @{ Name = 'Autodesk Vault Basic 2017 (Client) English Language Pack'; GUID = '{266597A9-2264-0000-0100-DCBF2B69166B}' },
+        @{ Name = 'FARO LS 1.1.505.0 (64bit)'; GUID = '{8834451B-6209-4E02-9EF4-4EF9E3C1F70F}' }
+    )
+    foreach ($product in $products) {
+        Uninstall-MSIProductByGUID -DisplayName $product.Name -GUID $product.GUID
+    }
+    # Only remove Microsoft dependencies if the switch is set
+    if ($RemoveMicrosoftDependencies) {
+        $msProducts = @(
+            @{ Name = 'Microsoft Visual C++ 2008 SP1 Redistributable (x64)'; GUID = '{5FCE6D76-F5DC-37AB-B2B8-22AB8CEDB1D4}' },
+            @{ Name = 'Microsoft Visual C++ 2008 SP1 Redistributable (x86)'; GUID = '{9BE518E6-ECC6-35A9-88E4-87755C07200F}' },
+            @{ Name = 'Microsoft Visual C++ 2010 SP1 Redistributable (x86)'; GUID = '{F0C3E5D1-1ADE-321E-8167-68EF0DE699A5}' },
+            @{ Name = 'Microsoft Visual C++ 2010 SP1 Redistributable (x64)'; GUID = '{1D8E6291-B0D5-35EC-8441-6616F567A0F7}' },
+            @{ Name = 'Microsoft Visual C++ 2008 x86 ATL Runtime'; GUID = '{04B34E21-5BEE-3D2B-8D3D-E3E80D253F64}' },
+            @{ Name = 'Microsoft Visual C++ 2008 x86 MFC Runtime'; GUID = '{B42E259C-E4D4-37F1-A1B2-EB9C4FC5A04D}' },
+            @{ Name = 'Microsoft Visual C++ 2008 x86 CRT Runtime'; GUID = '{14866AAD-1F23-39AC-A62B-7091ED1ADE64}' },
+            @{ Name = 'Microsoft Visual C++ 2008 x86 OpenMP Runtime'; GUID = '{4B90093A-5D9C-3956-8ABB-95848BE6EFAD}' },
+            @{ Name = 'Microsoft Visual C++ 2008 x64 ATL Runtime'; GUID = '{C3A57BB3-9AA6-3F6F-9395-6C062BDD5FC4}' },
+            @{ Name = 'Microsoft Visual C++ 2008 x64 MFC Runtime'; GUID = '{6DA2B636-698A-3294-BF4A-B5E11B238CDD}' },
+            @{ Name = 'Microsoft Visual C++ 2008 x64 CRT Runtime'; GUID = '{F6F09DD8-F39B-3A16-ADB9-C9E6B56903F9}' },
+            @{ Name = 'Microsoft Visual C++ 2008 x64 OpenMP Runtime'; GUID = '{8CCEA24C-51AE-3B71-9092-7D0C44DDA2DF}' },
+            @{ Name = 'MSXML 6.0 Parser'; GUID = '{FF59CB23-1800-4047-B40C-E20AE7051491}' }
+        )
+        foreach ($msProduct in $msProducts) {
+            Uninstall-MSIProductByGUID -DisplayName $msProduct.Name -GUID $msProduct.GUID
+        }
+        Write-Log "Completed Microsoft dependency uninstallation (Visual C++ Redistributables, MSXML)."
+    } else {
+        Write-Log "Skipped Microsoft dependency uninstallation (Visual C++ Redistributables, MSXML)."
+    }
+    Write-Log "Completed MSI GUID-based Autodesk and dependency uninstallation."
 }
 
 function Remove-AutodeskTempFiles {
@@ -746,25 +838,36 @@ function Reset-NetworkSettings {
 function Show-CompletionMessage {
     Write-ColoredOutput ""
     Write-Header "Autodesk Removal Completed Successfully!"
-    
     Write-ColoredOutput "IMPORTANT NOTES AND RECOVERY INFORMATION:" -Color $Colors.Info
     Write-ColoredOutput "- A system restore point was created before starting" -Color $Colors.Info
     Write-ColoredOutput "- Hosts file backup: C:\Windows\System32\drivers\etc\hosts.backup" -Color $Colors.Info
     Write-ColoredOutput "- Windows Firewall has been reset to default settings" -Color $Colors.Info
     Write-ColoredOutput "- Network settings have been reset" -Color $Colors.Info
-    Write-ColoredOutput ""
+    Write-ColoredOutput "" 
     Write-ColoredOutput "IF YOU EXPERIENCE PROBLEMS AFTER RESTART:" -Color $Colors.Warning
     Write-ColoredOutput "1. Use System Restore to return to the restore point created" -Color $Colors.Warning
     Write-ColoredOutput "2. Restore your hosts file from the backup if needed" -Color $Colors.Warning
     Write-ColoredOutput "3. Check Windows Update for any missing drivers" -Color $Colors.Warning
     Write-ColoredOutput "4. Reconfigure your firewall settings if needed" -Color $Colors.Warning
-    Write-ColoredOutput ""
+    Write-ColoredOutput "" 
     Write-ColoredOutput "TO ACCESS SYSTEM RESTORE:" -Color $Colors.Info
     Write-ColoredOutput "1. Type 'rstrui' in Start menu and press Enter" -Color $Colors.Info
     Write-ColoredOutput "2. Select the restore point created today" -Color $Colors.Info
     Write-ColoredOutput "3. Follow the wizard to restore your system" -Color $Colors.Info
-    Write-ColoredOutput ""
+    Write-ColoredOutput "" 
     Write-ColoredOutput "Please restart your computer for all changes to take effect" -Color $Colors.Success
+    Write-ColoredOutput "" 
+    Write-ColoredOutput "The following dependencies may remain and require manual removal if present:" -Color $Colors.Warning
+    Write-ColoredOutput "- Microsoft Visual C++ Redistributables (2008, 2010, 2012, 2013, 2015, etc.)" -Color $Colors.Warning
+    Write-ColoredOutput "- .NET Framework Runtime 4.6 or later" -Color $Colors.Warning
+    Write-ColoredOutput "- DirectX Runtime" -Color $Colors.Warning
+    Write-ColoredOutput "- Microsoft Visual Basic for Applications" -Color $Colors.Warning
+    Write-ColoredOutput "- MSXML 6.0 Parser" -Color $Colors.Warning
+    Write-ColoredOutput "- Microsoft Windows Media Format 9.5 Series Runtime" -Color $Colors.Warning
+    Write-ColoredOutput "- Autodesk ReCap, A360 Desktop, Content Libraries, etc." -Color $Colors.Warning
+    Write-ColoredOutput "- FARO LS 1.1.505.0 (64bit)" -Color $Colors.Warning
+    Write-ColoredOutput "" 
+    Write-ColoredOutput "Check 'Apps & Features' or 'Programs and Features' in Control Panel to remove these manually if needed." -Color $Colors.Info
     Write-Header "Operation Complete"
 }
 
@@ -819,6 +922,7 @@ function Main {
         Stop-AutodeskServices
         Stop-AutodeskProcesses
         Invoke-OfficialUninstallers
+        Uninstall-AutodeskMSIProducts
         Remove-AutodeskTempFiles
         Remove-AutodeskShortcuts
         Remove-AutodeskDirectories

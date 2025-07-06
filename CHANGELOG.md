@@ -18,6 +18,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Notes
 - These changes improve reliability and future compatibility for new Autodesk product versions and variants.
 
+## [2.1] - 2025-07-06
+
+### Added
+- New `-RemoveMicrosoftDependencies` switch parameter to optionally remove Microsoft Visual C++ Redistributables and MSXML dependencies during Autodesk product removal.
+- Expanded uninstall logic to use MSI GUIDs for both Autodesk and Microsoft dependencies, with improved error handling and logging for each uninstall attempt.
+- Enhanced uninstall function to only remove Microsoft dependencies if the new switch is explicitly set.
+
+### Changed
+- Improved error handling and logging for all MSI-based uninstall operations.
+- Refined uninstall logic based on best practices from other Autodesk removal scripts.
+
+### Notes
+- By default, Microsoft dependencies are NOT removed unless `-RemoveMicrosoftDependencies` is specified.
+- See script help for usage details.
+
 ## [2.0.0] - 2025-07-05
 
 ### Background
