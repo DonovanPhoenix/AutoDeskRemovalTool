@@ -7,29 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [2.1.0] - 2025-07-06
 
-### Changed
-- Future-proofed Autodesk Material Library service stopping: dynamically finds all services with names starting with "Autodesk Material Library" (no more hardcoded years).
-- Expanded process termination: added support for more Autodesk products (Civil 3D, Navisworks, Alias, Vault, Advance Steel, InfraWorks, Recap, Plant 3D, Robot, Moldflow, PowerMill, PowerInspect, PowerShape, Flame, Smoke, MotionBuilder, Mudbox, Character Generator, SketchBook, Eagle, BIM 360, FormIt, Structural Bridge, Structural Detailing, and more).
-- Moved official uninstaller execution (`Invoke-OfficialUninstallers`) to run before directory removal, ensuring uninstallers are not deleted before execution.
-
-### Fixed
-- No script errors detected after recent changes.
-
-### Notes
-- These changes improve reliability and future compatibility for new Autodesk product versions and variants.
-
-## [2.1] - 2025-07-06
-
 ### Added
 - New `-RemoveMicrosoftDependencies` switch parameter to optionally remove Microsoft Visual C++ Redistributables and MSXML dependencies during Autodesk product removal.
 - Expanded uninstall logic to use MSI GUIDs for both Autodesk and Microsoft dependencies, with improved error handling and logging for each uninstall attempt.
 - Enhanced uninstall function to only remove Microsoft dependencies if the new switch is explicitly set.
 
 ### Changed
+- Future-proofed Autodesk Material Library service stopping: dynamically finds all services with names starting with "Autodesk Material Library" (no more hardcoded years).
+- Expanded process termination: added support for more Autodesk products (Civil 3D, Navisworks, Alias, Vault, Advance Steel, InfraWorks, Recap, Plant 3D, Robot, Moldflow, PowerMill, PowerInspect, PowerShape, Flame, Smoke, MotionBuilder, Mudbox, Character Generator, SketchBook, Eagle, BIM 360, FormIt, Structural Bridge, Structural Detailing, and more).
+- Moved official uninstaller execution (`Invoke-OfficialUninstallers`) to run before directory removal, ensuring uninstallers are not deleted before execution.
 - Improved error handling and logging for all MSI-based uninstall operations.
 - Refined uninstall logic based on best practices from other Autodesk removal scripts.
 
+### Fixed
+- No script errors detected after recent changes.
+
 ### Notes
+- These changes improve reliability and future compatibility for new Autodesk product versions and variants.
 - By default, Microsoft dependencies are NOT removed unless `-RemoveMicrosoftDependencies` is specified.
 - See script help for usage details.
 
